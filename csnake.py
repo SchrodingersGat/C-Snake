@@ -125,9 +125,10 @@ class CodeWriter:
 
     VERSION = "1.1"
 
-    def __init__(self, lf="\n"):
+    def __init__(self, lf="\n", indent='    '):
 
         self.line_feed = lf
+        self.indent = indent
 
         # initialize values
         self.commenting = False  # switch for bulk commenting
@@ -214,7 +215,7 @@ class CodeWriter:
     def close_brace(self, new_line=True):
         """close-brace and tab-out"""
         self.tab_out()
-        self.add("\t" * self.tabs + '}')
+        self.add(self.indent * self.tabs + '}')
         if new_line:
             self.add_line('')
 
@@ -303,7 +304,7 @@ class CodeWriter:
             return
 
         if not ignore_tabs and not self.commenting:
-            self.add("\t" * self.tabs)
+            self.add(self.indent * self.tabs)
 
         if self.commenting:
             self.add("* ")
