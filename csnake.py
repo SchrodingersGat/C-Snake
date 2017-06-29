@@ -99,13 +99,13 @@ class Function:
 
     def prototype(self):
         """function prototype string"""
-        p = '{ret} {nm}({funcs})'.format(
+        prot = '{ret} {nm}({funcs})'.format(
             ret=self.return_type,
             nm=self.name,
             funcs=', '.join([v.declaration() for v in self.variables])
             if self.variables else 'void')
 
-        return p
+        return prot
 
     def call(self, *arg):
         """call a function"""
@@ -114,10 +114,10 @@ class Function:
             raise ValueError(
                 "number of arguments must match number of variables")
 
-        p = '{name}({args});'.format(
+        call_ = '{name}({args});'.format(
             name=self.name, args=', '.join([str(a) for a in arg]))
 
-        return p
+        return call_
 
 
 class CodeWriter:
