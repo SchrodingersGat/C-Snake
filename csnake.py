@@ -74,7 +74,7 @@ class Struct:
 
     def declaration(self):
         """Return a declaration string."""
-        if self.ref_name == None:
+        if self.ref_name is None:
             raise ValueError('no ref_name supplied for Struct "{name}"'.format(
                 name=self.name))
 
@@ -367,7 +367,7 @@ class CodeWriter:
             if type(var) == Variable:  # variables within the struct
                 self.add_variable(var)
             elif type(var) == Struct:  # other structs within the struct
-                if var.ref_name == None:
+                if var.ref_name is None:
                     raise ValueError('no ref_name provided for struct {name}'.
                                      format(name=var.name))
                 self.add_line(var.declaration(), comment=var.comment)
