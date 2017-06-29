@@ -1,107 +1,108 @@
 from csnake import *
 
-#generate a header file
+# generate a header file
 h = CodeWriter()
 
 HEADER = "_CSNAKE_EXAMPLE_H_"
 
-h.addAutogenComment(source="example.py")
-h.addLine()
+h.add_autogen_comment(source="example.py")
+h.add_line()
 
-h.startIfDef(HEADER, invert=True)
+h.start_if_def(HEADER, invert=True)
 h.define(HEADER)
-h.addLine()
+h.add_line()
 h.include("<stdint.h>", comment="Include standard types")
 
-h.addLine()
-h.addLine(comment="This is a single line comment")
-h.addLine()
-h.startComment()
-h.addLine("multi line comments")
-h.addLine("are also supported")
-h.endComment()
+h.add_line()
+h.add_line(comment="This is a single line comment")
+h.add_line()
+h.start_comment()
+h.add_line("multi line comments")
+h.add_line("are also supported")
+h.end_comment()
 
-h.addLine()
-h.addLine(comment="Define a structure")
+h.add_line()
+h.add_line(comment="Define a structure")
 
-s1 = Struct("DatStructTho", refName="destruct")
+s1 = Struct("DatStructTho", ref_name="destruct")
 
 v1 = Variable("a", "uint8_t", array=5, comment='Variables can be arrays')
-v2 = Variable("b", "uint16_t", qualifiers='volatile', comment='Extra qualifiers can be specified')
+v2 = Variable("b", "uint16_t", qualifiers='volatile',
+              comment='Extra qualifiers can be specified')
 v3 = Variable("c", "float", comment='Variables can have associated comments')
 
-s1.addVariable(v1)
-s1.addVariable(v2)
-s1.addVariable(v3)
+s1.add_variable(v1)
+s1.add_variable(v2)
+s1.add_variable(v3)
 
 s2 = Struct("ParentStruct_t")
 
-s2.addVariable(s1)
-s2.addVariable(Variable("x","float"))
-s2.addVariable(Variable("y","float"))
-s2.addVariable(Variable('z','float'))
+s2.add_variable(s1)
+s2.add_variable(Variable("x", "float"))
+s2.add_variable(Variable("y", "float"))
+s2.add_variable(Variable('z', 'float'))
 
-#add the two structs to the header file
-h.addStruct(s1)
-h.addLine()
-h.addStruct(s2)
-h.addLine()
+# add the two structs to the header file
+h.add_struct(s1)
+h.add_line()
+h.add_struct(s2)
+h.add_line()
 
-#and now some enumerations
-e = Enum("EnumExample_t",prefix="ENUM_PREFIX_")
-e.addValue("A")
-e.addValue("B",value=10,comment="Enum values can have comments too")
-e.addValue("C")
-e.addValue("D")
+# and now some enumerations
+e = Enum("EnumExample_t", prefix="ENUM_PREFIX_")
+e.add_value("A")
+e.add_value("B", value=10, comment="Enum values can have comments too")
+e.add_value("C")
+e.add_value("D")
 
-h.addEnum(e)
+h.add_enum(e)
 
-#add prototype for the main function
-f1 = Function("main", returnType="int")
+# add prototype for the main function
+f1 = Function("main", return_type="int")
 
-h.addLine()
-h.addFunctionPrototype(f1,comment="main function prototype")
-h.addLine()
+h.add_line()
+h.add_function_prototype(f1, comment="main function prototype")
+h.add_line()
 
-#now add another function
-f2 = Function("doTheNeedful", returnType="void")
-f2.addVariable(Variable("need","int"))
+# now add another function
+f2 = Function("do_the_needful", return_type="void")
+f2.add_variable(Variable("need", "int"))
 
-h.addFunctionPrototype(f2, comment="Do the Needful")
+h.add_function_prototype(f2, comment="Do the Needful")
 
-h.addLine()
-h.endIfDef()
+h.add_line()
+h.end_if_def()
 
-h.writeToFile("main.h")
+h.write_to_file("main.h")
 
-#now define the c file!
+# now define the c file!
 c = CodeWriter()
-c.addAutogenComment(source="example.py")
-c.addLine()
+c.add_autogen_comment(source="example.py")
+c.add_line()
 c.include("main.h")
 
-c.addLine()
-c.addLine(comment="Main function")
-c.addFunctionDefinition(f1)
-c.openBrace()
-c.addLine("int i = 0;",comment="Iterator")
-c.addLine()
-c.addLine("for (i=0;i<10;i++)")
-c.openBrace()
-c.callFunction(f2,"i")
-c.closeBrace()
-c.addLine()
-c.addLine("return 0;")
-c.closeBrace()
+c.add_line()
+c.add_line(comment="Main function")
+c.add_function_definition(f1)
+c.open_brace()
+c.add_line("int i = 0;", comment="Iterator")
+c.add_line()
+c.add_line("for (i=0;i<10;i++)")
+c.open_brace()
+c.call_function(f2, "i")
+c.close_brace()
+c.add_line()
+c.add_line("return 0;")
+c.close_brace()
 
-c.addLine()
+c.add_line()
 
-c.addLine(comment="do the needful")
-c.addFunctionDefinition(f2)
-c.openBrace()
-c.addLine("need++;")
-c.addLine("need--;")
-c.closeBrace()
-c.addLine()
+c.add_line(comment="do the needful")
+c.add_function_definition(f2)
+c.open_brace()
+c.add_line("need++;")
+c.add_line("need--;")
+c.close_brace()
+c.add_line()
 
-c.writeToFile("main.c")
+c.write_to_file("test.c")
