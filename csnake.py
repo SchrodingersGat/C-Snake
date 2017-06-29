@@ -189,10 +189,14 @@ class CodeWriter:
         year = date.today().year
         if authors:
             for author in authors:
-                self.add_line("Copyright © {year} {name} <{email}>".format(
+                if author.get('email', None):
+                    email = ' <{0}>'.format(author['email'])
+                else:
+                    email = ''
+                self.add_line("Copyright © {year} {name}{email}".format(
                     year=year,
                     name=author['name'],
-                    email=author['email']))
+                    email=email))
         self.add_line()
 
         if not isinstance(license_, str):
