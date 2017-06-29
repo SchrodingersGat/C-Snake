@@ -241,7 +241,7 @@ class CodeWriter:
     def end_if_def(self):
         """end an #ifdef block"""
 
-        if len(self.defs) > 0:
+        if self.defs:
             self.add_line("#endif ", comment=self.defs.pop(), ignore_tabs=True)
         else:
             self.add_line("#endif", ignore_tabs=True)
@@ -267,7 +267,7 @@ class CodeWriter:
         """end a switch statement"""
         self.tab_out()
         self.add('}')
-        if len(self.switch) > 0:
+        if self.switch:
             self.add(' // ~switch ({sw})'.format(sw=self.switch.pop()))
         self.add_line()
 
