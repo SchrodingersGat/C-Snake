@@ -299,7 +299,7 @@ class CodeWriter:
         """add a line of (formatted) text"""
 
         # empty line
-        if not text and not comment:
+        if not text and not comment and not self.commenting:
             self.add(self.line_feed)
             return
 
