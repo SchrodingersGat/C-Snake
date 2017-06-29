@@ -83,7 +83,7 @@ h.add_line()
 
 # now add another function
 f2 = Function("do_the_needful", return_type="void")
-f2.add_variable(Variable("need", "int"))
+f2.add_argument(Variable("need", "int"))
 
 h.add_function_prototype(f2, comment="Do the Needful")
 
