@@ -1,3 +1,6 @@
+from datetime import date
+
+
 class EnumValue:
     def __init__(self, name, value=None, comment=None):
         self.name = name
@@ -170,6 +173,33 @@ class CodeWriter:
         self.add_line(
             "Source code for C-Snake available at https://github.com/SchrodingersGat/C-Snake"
         )
+        self.end_comment()
+
+    def add_license_comment(self, license_, authors, intro=None):
+        """Add the license comment."""
+        self.start_comment()
+
+        if intro:
+            for line in intro.splitlines():
+                if line == '':
+                    self.add_line()
+                else:
+                    self.add_line(line)
+
+        year = date.today().year
+        if authors:
+            for author in authors:
+                self.add_line("Copyright © {year} {name} <{email}>".format(
+                    year=year,
+                    name=author['name'],
+                    email=author['email']))
+        self.add_line()
+
+        if not isinstance(license_, str):
+            raise TypeError('license_ must be a string.')
+        for line in license_.splitlines():
+            self.add_line(line)
+
         self.end_comment()
 
     def open_brace(self):
