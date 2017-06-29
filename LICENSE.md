@@ -1,7 +1,7 @@
 MIT License
 
-Copyright (c) 2017 Oliver
-Copyright (c) 2017 Andrej Radovic <r.andrej@gmail.com>
+Copyright © 2017 Oliver  
+Copyright © 2017 Andrej Radović <<r.andrej@gmail.com>>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
