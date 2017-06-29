@@ -42,7 +42,7 @@ class Variable:
 
     def declaration(self):
         """Return a declaration string."""
-        if type(self.qualifiers) in [list, tuple]:
+        if isinstance(self.qualifiers, (list, tuple)):
             qual = " ".join(self.qualifiers) + " "
         elif self.qualifiers is not None:
             qual = str(self.qualifiers) + " "
@@ -67,7 +67,7 @@ class Struct:
 
     def add_variable(self, variable):
         """Add another variable to struct"""
-        if not type(variable) in [Variable, Struct]:
+        if not isinstance(variable, (Variable, Struct)):
             raise TypeError("variable must be 'Variable' or 'Struct'")
 
         self.variables.append(variable)
@@ -90,8 +90,9 @@ class Function:
 
         self.variables = []
 
-    def add_variable(self, var):
-        if not type(var) == Variable:
+    def add_argument(self, var):
+        """Add an argument to function"""
+        if not isinstance(var, Variable):
             raise TypeError("variable must be of type 'Variable'")
 
         self.variables.append(var)
@@ -102,7 +103,7 @@ class Function:
             ret=self.return_type,
             nm=self.name,
             funcs=', '.join([v.declaration() for v in self.variables])
-            if len(self.variables) > 0 else 'void')
+            if self.variables else 'void')
 
         return p
 
@@ -329,7 +330,7 @@ class CodeWriter:
 
     def add_enum(self, enum):
         """add a constructed enumeration"""
-        if not type(enum) == Enum:
+        if not isinstance(enum, Enum):
             raise TypeError('enum must be of type "Enum"')
 
         self.add_line("typedef enum")
@@ -351,23 +352,23 @@ class CodeWriter:
 
     def add_variable(self, var):
         """add a variable definition"""
-        if not type(var) == Variable:
+        if not isinstance(var, Variable):
             raise TypeError("variable must be of type 'Variable'")
 
         self.add_line(var.declaration() + ";", comment=var.comment)
 
     def add_struct(self, struct):
         """add a struct"""
-        if not type(struct) == Struct:
+        if not isinstance(struct, Struct):
             raise TypeError("struct must be of type 'Struct'")
 
         self.add_line("typedef struct")
         self.open_brace()
 
         for var in struct.variables:
-            if type(var) == Variable:  # variables within the struct
+            if isinstance(var, Variable):  # variables within the struct
                 self.add_variable(var)
-            elif type(var) == Struct:  # other structs within the struct
+            elif isinstance(var, Struct):  # other structs within the struct
                 if var.ref_name is None:
                     raise ValueError('no ref_name provided for struct {name}'.
                                      format(name=var.name))
@@ -379,21 +380,21 @@ class CodeWriter:
 
     def add_function_prototype(self, func, comment=None):
         """add a function prototype"""
-        if not type(func) == Function:
+        if not isinstance(func, Function):
             raise TypeError("func must be of type 'Function'")
 
         self.add_line(func.prototype() + ';', comment=comment)
 
     def add_function_definition(self, func, comment=None):
         """add a function definition"""
-        if not type(func) == Function:
+        if not isinstance(func, Function):
             raise TypeError("func must be of type 'Function'")
 
         self.add_line(func.prototype(), comment=comment)
 
     def call_function(self, func, *arg):
         """enter a function"""
-        if not type(func) == Function:
+        if not isinstance(func, Function):
             raise TypeError("func must be of type 'Function'")
 
         self.add_line(func.call(*arg))
