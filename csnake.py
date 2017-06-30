@@ -126,10 +126,13 @@ class CodeWriter:
 
     VERSION = "1.1"
 
-    def __init__(self, lf="\n", indent='    '):
+    def __init__(self, lf="\n", indent=4):
 
         self.line_feed = lf
-        self.indent = indent
+        if isinstance(self.indent, int):
+            self.indent = ' ' * indent
+        else:
+            self.indent = indent
 
         # initialize values
         self.commenting = False  # switch for bulk commenting
