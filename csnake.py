@@ -2,6 +2,8 @@ from datetime import date
 
 
 class EnumValue:
+    """Singular value of an C-style enumeration"""
+
     def __init__(self, name, value=None, comment=None):
         self.name = name
         self.value = value
