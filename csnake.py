@@ -35,12 +35,16 @@ class Variable:
                  primitive,
                  qualifiers=None,
                  array=None,
-                 comment=None):
+                 comment=None,
+                 value=None,
+                 value_opts=None):
         self.name = name
         self.primitive = primitive
         self.comment = comment
         self.array = array
         self.qualifiers = qualifiers
+        self.value = value
+        self.value_opts = value_opts
 
     def declaration(self):
         """Return a declaration string."""
@@ -56,6 +60,112 @@ class Variable:
             prim=self.primitive,
             name=self.name,
             array='[{a}]'.format(a=self.array) if self.array else '')
+
+    def initialization(self, indent):
+        """Return an initialization string."""
+        # helper functions
+        def shape(array):
+            """Return dimensions (shape) of a multidimensional list"""
+            # strings should return nothing
+            if isinstance(array, str):
+                return ''
+            curr = array
+            shape = []
+            while True:
+                try:
+                    shape.append(len(curr))
+                    curr = curr[0]
+                except TypeError:
+                    return shape
+
+        def generate_single_var(var_, formatstring=None):
+            """generate single variable"""
+            if isinstance(var_, str):
+                return "\"{val}\"".format(val=var_)
+            elif isinstance(var_, (int, float)):
+                if formatstring is None:
+                    return str(var_)
+                return formatstring.format(var_)
+
+        def generate_array(array, indent='    ', formatstring=None):
+            """print (multi)dimensional arrays"""
+            class OpenBrace:
+                """Helper class to identify open braces while printing."""
+                pass
+
+            class ClosedBrace:
+                """Helper class to identify closed braces while printing"""
+                pass
+
+            depth = 0
+            stack = []
+            stack.append(array)
+            output = ''
+            leading_comma = False
+
+            while stack:
+                top = stack.pop()
+                # non-printed tokens
+                if isinstance(top, (list, tuple)):
+                    stack.append(ClosedBrace())
+                    stack.extend(top[::-1])
+                    stack.append(OpenBrace())
+                    continue
+                # non-comma-delimited tokens
+                if isinstance(top, ClosedBrace):
+                    depth -= 1 if depth > 0 else 0
+                    output += '}'
+                    if stack:
+                        if isinstance(stack[-1], ClosedBrace):
+                            output += '\n' + (indent * (depth - 1))
+                        else:
+                            output += ',\n' + (indent * depth)
+                        leading_comma = False
+                    continue
+                # check the need for leading comma
+                if leading_comma:
+                    output += ', '
+                else:
+                    leading_comma = True
+                # (potentially) comma delimited tokens
+                if isinstance(top, OpenBrace):
+                    output += '{'
+                    depth += 1
+                    if isinstance(stack[-1], (OpenBrace, list, tuple)):
+                        output += '\n' + (indent * depth)
+                    leading_comma = False
+                    continue
+                if isinstance(top, (int, float, str)):
+                    output += generate_single_var(top, formatstring)
+            return output
+
+        # main part: generating initializer
+        if isinstance(self.qualifiers, (list, tuple)):
+            qual = " ".join(self.qualifiers) + " "
+        elif self.qualifiers is not None:
+            qual = str(self.qualifiers) + " "
+        else:
+            qual = ""
+
+        # determining array length
+        if isinstance(self.array, (tuple, list)):
+            array = "".join("[{0}]".format(dim) for dim in self.array)
+        elif self.array is not None:
+            array = "[{dim}]".format(dim=str(self.array))
+        elif self.array is None and shape(self.value):
+            array = "".join("[{0}]".format(dim) for dim in shape(self.value))
+        else:
+            array = ""
+
+        if isinstance(self.value, (tuple, list)):
+            assignment = '\n' if len(shape(self.value)) > 1 else ''
+            assignment += generate_array(self.value, indent, self.value_opts)
+        else:
+            assignment = generate_single_var(self.value, self.value_opts)
+
+        return '{qual}{prim} {name}{array} = {assignment};'.format(
+            qual=qual, prim=self.primitive, name=self.name, array=array,
+            assignment=assignment)
 
 
 class Struct:
@@ -131,7 +241,7 @@ class CodeWriter:
     def __init__(self, lf="\n", indent=4):
 
         self.line_feed = lf
-        if isinstance(self.indent, int):
+        if isinstance(indent, int):
             self.indent = ' ' * indent
         else:
             self.indent = indent
@@ -355,12 +465,25 @@ class CodeWriter:
         self.add(' ' + enum.name + ';')
         self.add_line()
 
-    def add_variable(self, var):
-        """add a variable definition"""
+    def add_variable_declaration(self, var):
+        """add a variable declaration"""
         if not isinstance(var, Variable):
             raise TypeError("variable must be of type 'Variable'")
 
         self.add_line(var.declaration() + ";", comment=var.comment)
+
+    def add_variable_initialization(self, var):
+        """add a variable initialization"""
+        if not isinstance(var, Variable):
+            raise TypeError("variable must be of type 'Variable'")
+
+        initlines = var.initialization(self.indent).splitlines()
+        self.add_line(initlines[0], comment=var.comment)
+        if len(initlines) > 1:
+            self.tab_in()
+            for line in initlines[1:]:
+                self.add_line(line)
+            self.tab_out()
 
     def add_struct(self, struct):
         """add a struct"""
@@ -372,7 +495,7 @@ class CodeWriter:
 
         for var in struct.variables:
             if isinstance(var, Variable):  # variables within the struct
-                self.add_variable(var)
+                self.add_variable_declaration(var)
             elif isinstance(var, Struct):  # other structs within the struct
                 if var.ref_name is None:
                     raise ValueError('no ref_name provided for struct {name}'.

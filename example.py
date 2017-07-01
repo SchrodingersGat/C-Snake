@@ -88,6 +88,35 @@ f2.add_argument(Variable("need", "int"))
 h.add_function_prototype(f2, comment="Do the Needful")
 
 h.add_line()
+
+# initialize some variables
+h_var1 = Variable(name='initialized_string',
+                  primitive='char',
+                  qualifiers='const',
+                  array=None,
+                  comment=None,
+                  value=("Needs to be an escaped string. Use repr() or "
+                         "encode('unicode_escape') or escape by hand: \\n."),
+                  value_opts=None)
+h_var2 = Variable(name='initialized_array',
+                  primitive='uint8_t',
+                  qualifiers='const',
+                  array=100,
+                  comment=None,
+                  value=[n for n in range(10)],
+                  value_opts='{0:x}')
+h_var3 = Variable(name='multidim_initialized_array',
+                  primitive='uint8_t',
+                  qualifiers='const',
+                  array=None,
+                  comment=None,
+                  value=[[0 for _ in range(3)] for _ in range(3)],
+                  value_opts='{0:x}')
+
+h.add_variable_initialization(h_var1)
+h.add_variable_initialization(h_var2)
+h.add_variable_initialization(h_var3)
+
 h.end_if_def()
 
 h.write_to_file("main.h")
