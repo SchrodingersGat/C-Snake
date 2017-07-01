@@ -66,6 +66,7 @@ class Variable:
 
     def initialization(self, indent):
         """Return an initialization string."""
+
         # helper functions
         def shape(array):
             """Return dimensions (shape) of a multidimensional list"""
@@ -92,6 +93,7 @@ class Variable:
 
         def generate_array(array, indent='    ', formatstring=None):
             """print (multi)dimensional arrays"""
+
             class OpenBrace:
                 """Helper class to identify open braces while printing."""
                 pass
@@ -167,7 +169,10 @@ class Variable:
             assignment = generate_single_var(self.value, self.value_opts)
 
         return '{qual}{prim} {name}{array} = {assignment};'.format(
-            qual=qual, prim=self.primitive, name=self.name, array=array,
+            qual=qual,
+            prim=self.primitive,
+            name=self.name,
+            array=array,
             assignment=assignment)
 
 
@@ -309,12 +314,11 @@ class CodeWriter:
         year = date.today().year
         if authors:
             for author in authors:
-                if author.get('email', None):
-                    email = ' <{0}>'.format(author['email'])
-                else:
-                    email = ''
                 self.add_line("Copyright © {year} {name}{email}".format(
-                    year=year, name=author['name'], email=email))
+                    year=year,
+                    name=author['name'],
+                    email=' <{0}>'.format(author['email']) if author.get(
+                        'email', None) else ''))
         self.add_line()
 
         if not isinstance(license_, str):
