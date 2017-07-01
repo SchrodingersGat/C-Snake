@@ -314,9 +314,7 @@ class CodeWriter:
                 else:
                     email = ''
                 self.add_line("Copyright © {year} {name}{email}".format(
-                    year=year,
-                    name=author['name'],
-                    email=email))
+                    year=year, name=author['name'], email=email))
         self.add_line()
 
         if not isinstance(license_, str):
