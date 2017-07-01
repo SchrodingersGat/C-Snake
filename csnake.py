@@ -55,11 +55,14 @@ class Variable:
         else:
             qual = ""
 
+        if isinstance(self.array, (tuple, list)):
+            array = "".join("[{0}]".format(dim) for dim in self.array)
+        elif self.array is not None:
+            array = "[{dim}]".format(dim=str(self.array))
+        else:
+            array = ""
         return '{qual}{prim} {name}{array}'.format(
-            qual=qual,
-            prim=self.primitive,
-            name=self.name,
-            array='[{a}]'.format(a=self.array) if self.array else '')
+            qual=qual, prim=self.primitive, name=self.name, array=array)
 
     def initialization(self, indent):
         """Return an initialization string."""
