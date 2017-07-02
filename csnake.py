@@ -1,335 +1,538 @@
+from datetime import date
+
+
 class EnumValue:
+    """Singular value of an C-style enumeration"""
+
     def __init__(self, name, value=None, comment=None):
         self.name = name
         self.value = value
         self.comment = comment
 
-#c-style enumeration class
+
 class Enum:
+    """c-style enumeration class"""
 
     def __init__(self, name, prefix=""):
-        
-        #enum values
+
+        # enum values
         self.values = []
         self.name = name
-        
+
         self.prefix = prefix
-        
-    #assuees that the user adds the values in the correct order
-    def addValue(self, name, value=None, comment=None):
-                
-        self.values.append(EnumValue(name,value=value,comment=comment))
-        
-#c-style variable
+
+    def add_value(self, name, value=None, comment=None):
+        """assuees that the user adds the values in the correct order"""
+
+        self.values.append(EnumValue(name, value=value, comment=comment))
+
+
 class Variable:
-    def __init__(self, name, primitive, qualifiers=None,array=None, comment=None):
+    """c-style variable"""
+
+    def __init__(self,
+                 name,
+                 primitive,
+                 qualifiers=None,
+                 array=None,
+                 comment=None,
+                 value=None,
+                 value_opts=None):
         self.name = name
         self.primitive = primitive
         self.comment = comment
         self.array = array
         self.qualifiers = qualifiers
-        
+        self.value = value
+        self.value_opts = value_opts
+
     def declaration(self):
-        if type(self.qualifiers) in [list, tuple]:
+        """Return a declaration string."""
+        if isinstance(self.qualifiers, (list, tuple)):
             qual = " ".join(self.qualifiers) + " "
         elif self.qualifiers is not None:
             qual = str(self.qualifiers) + " "
         else:
             qual = ""
-    
+
+        if isinstance(self.array, (tuple, list)):
+            array = "".join("[{0}]".format(dim) for dim in self.array)
+        elif self.array is not None:
+            array = "[{dim}]".format(dim=str(self.array))
+        else:
+            array = ""
         return '{qual}{prim} {name}{array}'.format(
-                                            qual = qual,
-                                            prim = self.primitive,
-                                            name = self.name,
-                                            array = '[{a}]'.format(a = self.array) if self.array else '')
-        
-#c-style struct class
+            qual=qual, prim=self.primitive, name=self.name, array=array)
+
+    def initialization(self, indent):
+        """Return an initialization string."""
+
+        # helper functions
+        def shape(array):
+            """Return dimensions (shape) of a multidimensional list"""
+            # strings should return nothing
+            if isinstance(array, str):
+                return ''
+            curr = array
+            shape = []
+            while True:
+                try:
+                    shape.append(len(curr))
+                    curr = curr[0]
+                except TypeError:
+                    return shape
+
+        def generate_single_var(var_, formatstring=None):
+            """generate single variable"""
+            if isinstance(var_, str):
+                return "\"{val}\"".format(val=var_)
+            elif isinstance(var_, (int, float)):
+                if formatstring is None:
+                    return str(var_)
+                return formatstring.format(var_)
+
+        def generate_array(array, indent='    ', formatstring=None):
+            """print (multi)dimensional arrays"""
+
+            class OpenBrace:
+                """Helper class to identify open braces while printing."""
+                pass
+
+            class ClosedBrace:
+                """Helper class to identify closed braces while printing"""
+                pass
+
+            depth = 0
+            stack = []
+            stack.append(array)
+            output = ''
+            leading_comma = False
+
+            while stack:
+                top = stack.pop()
+                # non-printed tokens
+                if isinstance(top, (list, tuple)):
+                    stack.append(ClosedBrace())
+                    stack.extend(top[::-1])
+                    stack.append(OpenBrace())
+                    continue
+                # non-comma-delimited tokens
+                if isinstance(top, ClosedBrace):
+                    depth -= 1 if depth > 0 else 0
+                    output += '}'
+                    if stack:
+                        if isinstance(stack[-1], ClosedBrace):
+                            output += '\n' + (indent * (depth - 1))
+                        else:
+                            output += ',\n' + (indent * depth)
+                        leading_comma = False
+                    continue
+                # check the need for leading comma
+                if leading_comma:
+                    output += ', '
+                else:
+                    leading_comma = True
+                # (potentially) comma delimited tokens
+                if isinstance(top, OpenBrace):
+                    output += '{'
+                    depth += 1
+                    if isinstance(stack[-1], (OpenBrace, list, tuple)):
+                        output += '\n' + (indent * depth)
+                    leading_comma = False
+                    continue
+                if isinstance(top, (int, float, str)):
+                    output += generate_single_var(top, formatstring)
+            return output
+
+        # main part: generating initializer
+        if isinstance(self.qualifiers, (list, tuple)):
+            qual = " ".join(self.qualifiers) + " "
+        elif self.qualifiers is not None:
+            qual = str(self.qualifiers) + " "
+        else:
+            qual = ""
+
+        # determining array length
+        if isinstance(self.array, (tuple, list)):
+            array = "".join("[{0}]".format(dim) for dim in self.array)
+        elif self.array is not None:
+            array = "[{dim}]".format(dim=str(self.array))
+        elif self.array is None and shape(self.value):
+            array = "".join("[{0}]".format(dim) for dim in shape(self.value))
+        else:
+            array = ""
+
+        if isinstance(self.value, (tuple, list)):
+            assignment = '\n' if len(shape(self.value)) > 1 else ''
+            assignment += generate_array(self.value, indent, self.value_opts)
+        else:
+            assignment = generate_single_var(self.value, self.value_opts)
+
+        return '{qual}{prim} {name}{array} = {assignment};'.format(
+            qual=qual,
+            prim=self.primitive,
+            name=self.name,
+            array=array,
+            assignment=assignment)
+
+
 class Struct:
-    def __init__(self, name, refName=None, comment=None):
-        self.name = name        #definition name of this struct e.g. Struct_t
-        self.refName = refName  #reference name of this struct e.g. theStruct
+    """c-style struct class"""
+
+    def __init__(self, name, ref_name=None, comment=None):
+        self.name = name  # definition name of this struct e.g. Struct_t
+        self.ref_name = ref_name  # reference name of this struct e.g. the_struct
         self.variables = []
         self.comment = comment
-        
-    def addVariable(self, variable):
-        if not type(variable) in [Variable, Struct]:
-            raise TypeError("variable must be 'Variable' or 'Struct'")
-            
-        self.variables.append(variable)
-        
-    def declaration(self):
-        if self.refName == None:
-            raise ValueError('no refName supplied for Struct "{name}"'.format(name=self.name))
-            
-        return '{name} {ref};'.format(name=self.name, ref=self.refName)
 
-#c-style function
+    def add_variable(self, variable):
+        """Add another variable to struct"""
+        if not isinstance(variable, (Variable, Struct)):
+            raise TypeError("variable must be 'Variable' or 'Struct'")
+
+        self.variables.append(variable)
+
+    def declaration(self):
+        """Return a declaration string."""
+        if self.ref_name is None:
+            raise ValueError('no ref_name supplied for Struct "{name}"'.format(
+                name=self.name))
+
+        return '{name} {ref};'.format(name=self.name, ref=self.ref_name)
+
+
 class Function:
-    def __init__(self, name, returnType='void'):
+    """c-style function"""
+
+    def __init__(self, name, return_type='void'):
         self.name = name
-        self.returnType = returnType
-        
+        self.return_type = return_type
+
         self.variables = []
-        
-    def addVariable(self, var):
-        if not type(var) == Variable:
+
+    def add_argument(self, var):
+        """Add an argument to function"""
+        if not isinstance(var, Variable):
             raise TypeError("variable must be of type 'Variable'")
-            
+
         self.variables.append(var)
-        
-    #function prototype string
+
     def prototype(self):
-        p = '{ret} {nm}({funcs})'.format(
-            ret = self.returnType,
-            nm = self.name,
-            funcs = ', '.join([v.declaration() for v in self.variables]) if len(self.variables) > 0 else 'void')
-            
-        return p
-        
-    #call a function
+        """function prototype string"""
+        prot = '{ret} {nm}({funcs})'.format(
+            ret=self.return_type,
+            nm=self.name,
+            funcs=', '.join([v.declaration() for v in self.variables])
+            if self.variables else 'void')
+
+        return prot
+
     def call(self, *arg):
+        """call a function"""
         if not len(arg) == len(self.variables):
             print(arg)
-            raise ValueError("number of arguments must match number of variables")
-            
-        p = '{name}({args});'.format(name=self.name, args=', '.join([str(a) for a in arg]))
-        
-        return p
-        
+            raise ValueError(
+                "number of arguments must match number of variables")
+
+        call_ = '{name}({args});'.format(
+            name=self.name, args=', '.join([str(a) for a in arg]))
+
+        return call_
+
+
 class CodeWriter:
 
     CPP = "__cplusplus"
-    
+
     VERSION = "1.1"
 
-    def __init__(self, lf="\n"):
-        
-        self.lineFeed = lf
-        
-        #initialize values
-        self.commenting = False #switch for bulk commenting
-        self.defs = [] #define levels
-        self.switch = [] #switch levels
+    def __init__(self, lf="\n", indent=4):
+
+        self.line_feed = lf
+        if isinstance(indent, int):
+            self.indent = ' ' * indent
+        else:
+            self.indent = indent
+
+        # initialize values
+        self.commenting = False  # switch for bulk commenting
+        self.defs = []  # define levels
+        self.switch = []  # switch levels
         self.tabs = 0
-        self.text = '' #code
-        
-    #increase tab level
-    def tabIn(self):
+        self.text = ''  # code
+
+    def tab_in(self):
+        """increase tab level"""
         self.tabs += 1
-        
-    #decrease tab level
-    def tabOut(self):
+
+    def tab_out(self):
+        """decrease tab level"""
         if self.tabs > 0:
             self.tabs -= 1
-            
-    def resetTabs(self):
+
+    def reset_tabs(self):
         self.tabs = 0
-        
-    #start a bulk comment
-    def startComment(self):
-        self.addLine('/*')
+
+    def start_comment(self):
+        """start a bulk comment"""
+        self.add_line('/*')
         self.commenting = True
-    
-    #end a bulk comment
-    def endComment(self):
+
+    def end_comment(self):
+        """end a bulk comment"""
         self.commenting = False
-        self.addLine('*/')
-        
-    #add the auto-gen comment (user can point to the source file if required)
-    def addAutogenComment(self, source=None):
-        self.startComment()
-        self.addLine("This file was autogenerated using the C-Snake v{version} script".format(version=self.VERSION))
-        self.addLine("This file should not be edited directly, any changes will be overwritten next time the script is run")
+        self.add_line('*/')
+
+    def add_autogen_comment(self, source=None):
+        """add the auto-gen comment (user can point to the source file if required)"""
+        self.start_comment()
+        self.add_line(
+            "This file was autogenerated using the C-Snake v{version} script".
+            format(version=self.VERSION))
+        self.add_line(
+            "This file should not be edited directly, any changes will be overwritten next time the script is run"
+        )
         if source:
-            self.addLine("Make any changes to the file '{src}'".format(src=str(source)))
-        self.addLine("Source code for C-Snake available at https://github.com/SchrodingersGat/C-Snake")
-        self.endComment()
-        
-    #open-brace and tab
-    def openBrace(self):
-        self.addLine('{')
-        self.tabIn()
-        
-    #close-brace and tab-out
-    def closeBrace(self, newLine = True):
-        self.tabOut()
-        self.add("\t" * self.tabs + '}')
-        if newLine:
-            self.addLine('')
-            
-    #add a define
+            self.add_line(
+                "Make any changes to the file '{src}'".format(src=str(source)))
+        self.add_line(
+            "Source code for C-Snake available at https://github.com/SchrodingersGat/C-Snake"
+        )
+        self.end_comment()
+
+    def add_license_comment(self, license_, authors, intro=None):
+        """Add the license comment."""
+        self.start_comment()
+
+        if intro:
+            for line in intro.splitlines():
+                if line == '':
+                    self.add_line()
+                else:
+                    self.add_line(line)
+
+        year = date.today().year
+        if authors:
+            for author in authors:
+                self.add_line("Copyright © {year} {name}{email}".format(
+                    year=year,
+                    name=author['name'],
+                    email=' <{0}>'.format(author['email']) if author.get(
+                        'email', None) else ''))
+        self.add_line()
+
+        if not isinstance(license_, str):
+            raise TypeError('license_ must be a string.')
+        for line in license_.splitlines():
+            self.add_line(line)
+
+        self.end_comment()
+
+    def open_brace(self):
+        """open-brace and tab"""
+        self.add_line('{')
+        self.tab_in()
+
+    def close_brace(self, new_line=True):
+        """close-brace and tab-out"""
+        self.tab_out()
+        self.add(self.indent * self.tabs + '}')
+        if new_line:
+            self.add_line('')
+
     def define(self, name, value=None, comment=None):
+        """add a define"""
         line = "#define " + name
         if value:
             line += ' ' + str(value)
-        
-        self.addLine(line, comment=comment, ignoreTabs = True)
-        
-    #start an #ifdef block (preprocessor)
-    def startIfDef(self, define, invert=False, comment=None):
+
+        self.add_line(line, comment=comment, ignore_tabs=True)
+
+    def start_if_def(self, define, invert=False, comment=None):
+        """start an #ifdef block (preprocessor)"""
         self.defs.append(define)
         if invert:
-            self.addLine("#ifndef " + define, comment=comment, ignoreTabs = True)
+            self.add_line(
+                "#ifndef " + define, comment=comment, ignore_tabs=True)
         else:
-            self.addLine("#ifdef " + define, comment=comment, ignoreTabs = True)
-            
-    #end an #ifdef block
-    def endIfDef(self):
-    
-        if len(self.defs) > 0:
-            self.addLine("#endif ", comment=self.defs.pop(), ignoreTabs = True)
+            self.add_line(
+                "#ifdef " + define, comment=comment, ignore_tabs=True)
+
+    def end_if_def(self):
+        """end an #ifdef block"""
+
+        if self.defs:
+            self.add_line("#endif ", comment=self.defs.pop(), ignore_tabs=True)
         else:
-            self.addLine("#endif", ignoreTabs = True)
-        
-    #add an 'extern' switch for CPP compilers
-    def cppEntry(self):
-        self.startIfDef(self.CPP, "Play nice with C++ compilers")
-        self.addLine('extern "C" {', ignoreTabs = True)
-        self.endIfDef()
-        
-    def cppExit(self):
-        self.startIfDef(self.CPP, "Done playing nice with C++ compilers")
-        self.addLine('}', ignoreTabs = True)
-        self.endIfDef()
-        
-    #start a switch statement
-    def startSwitch(self, switch):
+            self.add_line("#endif", ignore_tabs=True)
+
+    def cpp_entry(self):
+        """add an 'extern' switch for CPP compilers"""
+        self.start_if_def(self.CPP, "Play nice with C++ compilers")
+        self.add_line('extern "C" {', ignore_tabs=True)
+        self.end_if_def()
+
+    def cpp_exit(self):
+        self.start_if_def(self.CPP, "Done playing nice with C++ compilers")
+        self.add_line('}', ignore_tabs=True)
+        self.end_if_def()
+
+    def start_switch(self, switch):
+        """start a switch statement"""
         self.switch.append(switch)
-        self.addLine('switch ({sw})'.format(sw=switch))
-        self.openBrace()
-        
-    #end a switch statement
-    def endSwitch(self):
-        self.tabOut()
+        self.add_line('switch ({sw})'.format(sw=switch))
+        self.open_brace()
+
+    def end_switch(self):
+        """end a switch statement"""
+        self.tab_out()
         self.add('}')
-        if len(self.switch) > 0:
+        if self.switch:
             self.add(' // ~switch ({sw})'.format(sw=self.switch.pop()))
-        self.addLine()
-        
-    #add a case statement
-    def addCase(self, case, comment=None):
-        self.appendLine('case {case}:'.format(case=case),comment=comment)
-        self.tabIn()
-        
-    #add a default case statement
-    def addDefault(self, comment=None):
-        self.appendLine('default:',comment=comment)
-        self.tabIn()
-        
-    #break from a case
-    def breakFromCase(self):
-        self.appendLine('break;')
-        self.tabOut()
-        
-    #return from a case
-    def returnFromCase(self, value=None):
-        self.appendLine('return{val};'.format(val=' ' + str(value) if value else ''))
-        self.tabOut()
-        
-    #add raw text
+        self.add_line()
+
+    def add_case(self, case, comment=None):
+        """add a case statement"""
+        self.add_line('case {case}:'.format(case=case), comment=comment)
+        self.tab_in()
+
+    def add_default(self, comment=None):
+        """add a default case statement"""
+        self.add_line('default:', comment=comment)
+        self.tab_in()
+
+    def break_from_case(self):
+        """break from a case"""
+        self.add_line('break;')
+        self.tab_out()
+
+    def return_from_case(self, value=None):
+        """return from a case"""
+        self.add_line(
+            'return{val};'.format(val=' ' + str(value) if value else ''))
+        self.tab_out()
+
     def add(self, text):
+        """add raw text"""
         self.text += text
-        
-    #add a line of (formatted) text
-    def addLine(self, text=None, comment=None, ignoreTabs=False):
-        
-        #empty line
-        if not text and not comment:
-            self.add(self.lineFeed)
+
+    def add_line(self, text=None, comment=None, ignore_tabs=False):
+        """add a line of (formatted) text"""
+
+        # empty line
+        if not text and not comment and not self.commenting:
+            self.add(self.line_feed)
             return
-        
-        if not ignoreTabs and not self.commenting:
-            self.add("\t" * self.tabs)
-        
+
+        if not ignore_tabs and not self.commenting:
+            self.add(self.indent * self.tabs)
+
         if self.commenting:
             self.add("* ")
-            
-        #add the text (if appropriate)
+
+        # add the text (if appropriate)
         if text:
             self.add(text)
-        #add a trailing comment (if appropriate)
+        # add a trailing comment (if appropriate)
         if comment:
             if text:
-                self.add(' ') #add a space after the text
+                self.add(' ')  # add a space after the text
             self.add('//' + comment)
-            
-        self.add(self.lineFeed)
-            
-    #add a c-style include
+
+        self.add(self.line_feed)
+
     def include(self, file, comment=None):
-        self.addLine("#include {file}".format(file=file),comment=comment,ignoreTabs=True)
-            
-    #add a constructed enumeration
-    def addEnum(self, enum):
-        if not type(enum) == Enum:
+        """add a c-style include"""
+        self.add_line(
+            "#include {file}".format(file=file),
+            comment=comment,
+            ignore_tabs=True)
+
+    def add_enum(self, enum):
+        """add a constructed enumeration"""
+        if not isinstance(enum, Enum):
             raise TypeError('enum must be of type "Enum"')
-            
-        self.addLine("typedef enum")
-        self.openBrace()
-        
-        for i,v in enumerate(enum.values):
+
+        self.add_line("typedef enum")
+        self.open_brace()
+
+        for i, v in enumerate(enum.values):
             line = enum.prefix + v.name
             if v.value:
                 line += " = " + str(v.value)
-            
+
             if i < (len(enum.values) - 1):
                 line += ","
-                
-            self.addLine(line, comment=v.comment)
-            
-        self.closeBrace(newLine=False)
+
+            self.add_line(line, comment=v.comment)
+
+        self.close_brace(new_line=False)
         self.add(' ' + enum.name + ';')
-        self.addLine()
-            
-    #add a variable definition
-    def addVariable(self, var):
-        if not type(var) == Variable:
+        self.add_line()
+
+    def add_variable_declaration(self, var):
+        """add a variable declaration"""
+        if not isinstance(var, Variable):
             raise TypeError("variable must be of type 'Variable'")
-            
-        self.addLine(var.declaration() + ";", comment=var.comment)
-            
-    #add a struct
-    def addStruct(self, struct):
-        if not type(struct) == Struct:
+
+        self.add_line(var.declaration() + ";", comment=var.comment)
+
+    def add_variable_initialization(self, var):
+        """add a variable initialization"""
+        if not isinstance(var, Variable):
+            raise TypeError("variable must be of type 'Variable'")
+
+        initlines = var.initialization(self.indent).splitlines()
+        self.add_line(initlines[0], comment=var.comment)
+        if len(initlines) > 1:
+            self.tab_in()
+            for line in initlines[1:]:
+                self.add_line(line)
+            self.tab_out()
+
+    def add_struct(self, struct):
+        """add a struct"""
+        if not isinstance(struct, Struct):
             raise TypeError("struct must be of type 'Struct'")
-            
-        self.addLine("typedef struct")
-        self.openBrace()
-        
+
+        self.add_line("typedef struct")
+        self.open_brace()
+
         for var in struct.variables:
-            if type(var) == Variable: #variables within the struct
-                self.addVariable(var)
-            elif type(var) == Struct: #other structs within the struct
-                if var.refName == None:
-                    raise ValueError('no refName provided for struct {name}'.format(name=var.name))
-                self.addLine(var.declaration(), comment=var.comment)
-            
-        self.closeBrace(newLine=False)
+            if isinstance(var, Variable):  # variables within the struct
+                self.add_variable_declaration(var)
+            elif isinstance(var, Struct):  # other structs within the struct
+                if var.ref_name is None:
+                    raise ValueError('no ref_name provided for struct {name}'.
+                                     format(name=var.name))
+                self.add_line(var.declaration(), comment=var.comment)
+
+        self.close_brace(new_line=False)
         self.add(' ' + struct.name + ';')
-        self.addLine()
-        
-    #add a function prototype
-    def addFunctionPrototype(self, func, comment=None):
-        if not type(func) == Function:
+        self.add_line()
+
+    def add_function_prototype(self, func, comment=None):
+        """add a function prototype"""
+        if not isinstance(func, Function):
             raise TypeError("func must be of type 'Function'")
-            
-        self.addLine(func.prototype() + ';', comment=comment)
-     
-    #add a function definition
-    def addFunctionDefinition(self, func, comment=None):
-        if not type(func) == Function:
+
+        self.add_line(func.prototype() + ';', comment=comment)
+
+    def add_function_definition(self, func, comment=None):
+        """add a function definition"""
+        if not isinstance(func, Function):
             raise TypeError("func must be of type 'Function'")
-            
-        self.addLine(func.prototype(), comment=comment)
-    
-    #enter a function
-    def callFunction(self, func, *arg):
-        if not type(func) == Function:
+
+        self.add_line(func.prototype(), comment=comment)
+
+    def call_function(self, func, *arg):
+        """enter a function"""
+        if not isinstance(func, Function):
             raise TypeError("func must be of type 'Function'")
-            
-        self.addLine(func.call(*arg))
-        
-    #write code to file
-    def writeToFile(self, file):
-        with open(file,'w') as the_file:
+
+        self.add_line(func.call(*arg))
+
+    def write_to_file(self, file):
+        """write code to file"""
+        with open(file, 'w') as the_file:
             the_file.write(self.text)

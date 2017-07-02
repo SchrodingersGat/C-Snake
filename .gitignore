@@ -2,3 +2,4 @@
 *.h
 *.pyc
 __pycache__
+tags
