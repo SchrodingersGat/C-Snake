@@ -71,6 +71,19 @@ class Variable:
         self.value_opts = value_opts
 
     def declaration(self):
+    def __array_dimensions(self):
+        if isinstance(self.array, (tuple, list)):
+            array = "".join("[{0}]".format(dim) for dim in self.array)
+        elif self.array is not None:
+            array = "[{dim}]".format(dim=str(self.array))
+        elif self.array is None and isinstance(self.value, str):
+            array = '[]'
+        elif self.array is None and shape(self.value):
+            array = "".join("[{0}]".format(dim) for dim in shape(self.value))
+        else:
+            array = ""
+        return array
+
         """Return a declaration string."""
         if isinstance(self.qualifiers, (list, tuple)):
             qual = " ".join(self.qualifiers) + " "
@@ -79,14 +92,13 @@ class Variable:
         else:
             qual = ""
 
-        if isinstance(self.array, (tuple, list)):
-            array = "".join("[{0}]".format(dim) for dim in self.array)
-        elif self.array is not None:
-            array = "[{dim}]".format(dim=str(self.array))
-        else:
-            array = ""
-        return '{qual}{prim} {name}{array}'.format(
-            qual=qual, prim=self.primitive, name=self.name, array=array)
+        array = self.__array_dimensions()
+        return '{ext}{qual}{prim} {name}{array}'.format(
+            ext='extern ' if extern else '',
+            qual=qual,
+            prim=self.primitive,
+            name=self.name,
+            array=array)
 
     def initialization(self, indent):
         """Return an initialization string."""
@@ -161,15 +173,7 @@ class Variable:
         else:
             qual = ""
 
-        # determining array length
-        if isinstance(self.array, (tuple, list)):
-            array = "".join("[{0}]".format(dim) for dim in self.array)
-        elif self.array is not None:
-            array = "[{dim}]".format(dim=str(self.array))
-        elif self.array is None and shape(self.value):
-            array = "".join("[{0}]".format(dim) for dim in shape(self.value))
-        else:
-            array = ""
+        array = self.__array_dimensions()
 
         if isinstance(self.value, (tuple, list)):
             assignment = '\n' if len(shape(self.value)) > 1 else ''
