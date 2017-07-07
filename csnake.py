@@ -1,5 +1,10 @@
 from datetime import date
 
+###############################################################################
+#                           public helper functions                           #
+###############################################################################
+
+
 def shape(array):
     """Return dimensions (shape) of a multidimensional list"""
     # strings should return nothing
@@ -13,6 +18,12 @@ def shape(array):
             curr = curr[0]
         except TypeError:
             return shape
+
+
+###############################################################################
+#                        classes defining C constructs                        #
+###############################################################################
+
 
 class EnumValue:
     """Singular value of an C-style enumeration"""
@@ -238,7 +249,13 @@ class Function:
         return call_
 
 
+###############################################################################
+#                         Main, file-generating class                         #
+###############################################################################
+
+
 class CodeWriter:
+    """Class to describe and generate contents of a .c/.cpp/.h/.hpp file"""
 
     CPP = "__cplusplus"
 
