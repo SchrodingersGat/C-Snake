@@ -44,8 +44,11 @@ h.add_line(comment="Define a structure")
 s1 = Struct("DatStructTho", ref_name="destruct")
 
 v1 = Variable("a", "uint8_t", array=5, comment='Variables can be arrays')
-v2 = Variable("b", "uint16_t", qualifiers='volatile',
-              comment='Extra qualifiers can be specified')
+v2 = Variable(
+    "b",
+    "uint16_t",
+    qualifiers='volatile',
+    comment='Extra qualifiers can be specified')
 v3 = Variable("c", "float", comment='Variables can have associated comments')
 
 s1.add_variable(v1)
@@ -89,33 +92,36 @@ h.add_function_prototype(f2, comment="Do the Needful")
 
 h.add_line()
 
-# initialize some variables
-h_var1 = Variable(name='initialized_string',
-                  primitive='char',
-                  qualifiers='const',
-                  array=None,
-                  comment=None,
-                  value=("Needs to be an escaped string. Use repr() or "
-                         "encode('unicode_escape') or escape by hand: \\n."),
-                  value_opts=None)
-h_var2 = Variable(name='initialized_array',
-                  primitive='uint8_t',
-                  qualifiers='const',
-                  array=100,
-                  comment=None,
-                  value=[n for n in range(10)],
-                  value_opts='{0:x}')
-h_var3 = Variable(name='multidim_initialized_array',
-                  primitive='uint8_t',
-                  qualifiers='const',
-                  array=None,
-                  comment=None,
-                  value=[[0 for _ in range(3)] for _ in range(3)],
-                  value_opts='{0:x}')
+# declare some variables extern, to be defined in the .c file
+var1 = Variable(
+    name='initialized_string',
+    primitive='char',
+    qualifiers='const',
+    array=None,
+    comment=None,
+    value=("Needs to be an escaped string. Use repr() or "
+           "encode('unicode_escape') or escape by hand: \\n."),
+    value_opts=None)
+var2 = Variable(
+    name='initialized_array',
+    primitive='uint8_t',
+    qualifiers='const',
+    array=100,
+    comment=None,
+    value=[n for n in range(10)],
+    value_opts='{0:x}')
+var3 = Variable(
+    name='multidim_initialized_array',
+    primitive='uint8_t',
+    qualifiers='const',
+    array=None,
+    comment=None,
+    value=[[0 for _ in range(3)] for _ in range(3)],
+    value_opts='{0:x}')
 
-h.add_variable_initialization(h_var1)
-h.add_variable_initialization(h_var2)
-h.add_variable_initialization(h_var3)
+h.add_variable_declaration(var1, extern=True)
+h.add_variable_declaration(var2, extern=True)
+h.add_variable_declaration(var3, extern=True)
 
 h.end_if_def()
 
@@ -126,6 +132,13 @@ c = CodeWriter()
 c.add_autogen_comment(source="example.py")
 c.add_line()
 c.include("main.h")
+
+c.add_line()
+
+# initialize those declared variables 
+c.add_variable_initialization(var1)
+c.add_variable_initialization(var2)
+c.add_variable_initialization(var3)
 
 c.add_line()
 c.add_line(comment="Main function")
