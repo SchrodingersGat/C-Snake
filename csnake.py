@@ -1,5 +1,29 @@
 from datetime import date
 
+###############################################################################
+#                           public helper functions                           #
+###############################################################################
+
+
+def shape(array):
+    """Return dimensions (shape) of a multidimensional list"""
+    # strings should return nothing
+    if isinstance(array, str):
+        return ''
+    curr = array
+    shape = []
+    while True:
+        try:
+            shape.append(len(curr))
+            curr = curr[0]
+        except TypeError:
+            return shape
+
+
+###############################################################################
+#                        classes defining C constructs                        #
+###############################################################################
+
 
 class EnumValue:
     """Singular value of an C-style enumeration"""
@@ -46,7 +70,20 @@ class Variable:
         self.value = value
         self.value_opts = value_opts
 
-    def declaration(self):
+    def __array_dimensions(self):
+        if isinstance(self.array, (tuple, list)):
+            array = "".join("[{0}]".format(dim) for dim in self.array)
+        elif self.array is not None:
+            array = "[{dim}]".format(dim=str(self.array))
+        elif self.array is None and isinstance(self.value, str):
+            array = '[]'
+        elif self.array is None and shape(self.value):
+            array = "".join("[{0}]".format(dim) for dim in shape(self.value))
+        else:
+            array = ""
+        return array
+
+    def declaration(self, extern=False):
         """Return a declaration string."""
         if isinstance(self.qualifiers, (list, tuple)):
             qual = " ".join(self.qualifiers) + " "
@@ -55,32 +92,16 @@ class Variable:
         else:
             qual = ""
 
-        if isinstance(self.array, (tuple, list)):
-            array = "".join("[{0}]".format(dim) for dim in self.array)
-        elif self.array is not None:
-            array = "[{dim}]".format(dim=str(self.array))
-        else:
-            array = ""
-        return '{qual}{prim} {name}{array}'.format(
-            qual=qual, prim=self.primitive, name=self.name, array=array)
+        array = self.__array_dimensions()
+        return '{ext}{qual}{prim} {name}{array}'.format(
+            ext='extern ' if extern else '',
+            qual=qual,
+            prim=self.primitive,
+            name=self.name,
+            array=array)
 
-    def initialization(self, indent):
+    def initialization(self, indent='    '):
         """Return an initialization string."""
-
-        # helper functions
-        def shape(array):
-            """Return dimensions (shape) of a multidimensional list"""
-            # strings should return nothing
-            if isinstance(array, str):
-                return ''
-            curr = array
-            shape = []
-            while True:
-                try:
-                    shape.append(len(curr))
-                    curr = curr[0]
-                except TypeError:
-                    return shape
 
         def generate_single_var(var_, formatstring=None):
             """generate single variable"""
@@ -152,15 +173,7 @@ class Variable:
         else:
             qual = ""
 
-        # determining array length
-        if isinstance(self.array, (tuple, list)):
-            array = "".join("[{0}]".format(dim) for dim in self.array)
-        elif self.array is not None:
-            array = "[{dim}]".format(dim=str(self.array))
-        elif self.array is None and shape(self.value):
-            array = "".join("[{0}]".format(dim) for dim in shape(self.value))
-        else:
-            array = ""
+        array = self.__array_dimensions()
 
         if isinstance(self.value, (tuple, list)):
             assignment = '\n' if len(shape(self.value)) > 1 else ''
@@ -240,7 +253,13 @@ class Function:
         return call_
 
 
+###############################################################################
+#                         Main, file-generating class                         #
+###############################################################################
+
+
 class CodeWriter:
+    """Class to describe and generate contents of a .c/.cpp/.h/.hpp file"""
 
     CPP = "__cplusplus"
 
@@ -470,12 +489,12 @@ class CodeWriter:
         self.add(' ' + enum.name + ';')
         self.add_line()
 
-    def add_variable_declaration(self, var):
+    def add_variable_declaration(self, var, extern=False):
         """add a variable declaration"""
         if not isinstance(var, Variable):
             raise TypeError("variable must be of type 'Variable'")
 
-        self.add_line(var.declaration() + ";", comment=var.comment)
+        self.add_line(var.declaration(extern) + ";", comment=var.comment)
 
     def add_variable_initialization(self, var):
         """add a variable initialization"""
