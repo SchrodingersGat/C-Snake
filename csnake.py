@@ -100,7 +100,7 @@ class Variable:
             name=self.name,
             array=array)
 
-    def initialization(self, indent):
+    def initialization(self, indent='    '):
         """Return an initialization string."""
 
         def generate_single_var(var_, formatstring=None):
