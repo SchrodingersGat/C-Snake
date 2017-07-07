@@ -1,5 +1,18 @@
 from datetime import date
 
+def shape(array):
+    """Return dimensions (shape) of a multidimensional list"""
+    # strings should return nothing
+    if isinstance(array, str):
+        return ''
+    curr = array
+    shape = []
+    while True:
+        try:
+            shape.append(len(curr))
+            curr = curr[0]
+        except TypeError:
+            return shape
 
 class EnumValue:
     """Singular value of an C-style enumeration"""
@@ -66,21 +79,6 @@ class Variable:
 
     def initialization(self, indent):
         """Return an initialization string."""
-
-        # helper functions
-        def shape(array):
-            """Return dimensions (shape) of a multidimensional list"""
-            # strings should return nothing
-            if isinstance(array, str):
-                return ''
-            curr = array
-            shape = []
-            while True:
-                try:
-                    shape.append(len(curr))
-                    curr = curr[0]
-                except TypeError:
-                    return shape
 
         def generate_single_var(var_, formatstring=None):
             """generate single variable"""
