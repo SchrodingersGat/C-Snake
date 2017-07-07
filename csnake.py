@@ -70,7 +70,6 @@ class Variable:
         self.value = value
         self.value_opts = value_opts
 
-    def declaration(self):
     def __array_dimensions(self):
         if isinstance(self.array, (tuple, list)):
             array = "".join("[{0}]".format(dim) for dim in self.array)
@@ -84,6 +83,7 @@ class Variable:
             array = ""
         return array
 
+    def declaration(self, extern=False):
         """Return a declaration string."""
         if isinstance(self.qualifiers, (list, tuple)):
             qual = " ".join(self.qualifiers) + " "
@@ -489,12 +489,12 @@ class CodeWriter:
         self.add(' ' + enum.name + ';')
         self.add_line()
 
-    def add_variable_declaration(self, var):
+    def add_variable_declaration(self, var, extern=False):
         """add a variable declaration"""
         if not isinstance(var, Variable):
             raise TypeError("variable must be of type 'Variable'")
 
-        self.add_line(var.declaration() + ";", comment=var.comment)
+        self.add_line(var.declaration(extern) + ";", comment=var.comment)
 
     def add_variable_initialization(self, var):
         """add a variable initialization"""
