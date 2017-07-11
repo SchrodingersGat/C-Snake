@@ -158,6 +158,8 @@ class Variable:
                     if stack:
                         if isinstance(stack[-1], ClosedBrace):
                             output += '\n' + (indent * (depth - 1))
+                        elif isinstance(stack[-1], Designator):
+                            output += ','
                         else:
                             output += ',\n' + (indent * depth)
                         leading_comma = False
