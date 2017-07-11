@@ -1,9 +1,7 @@
+# -*- coding: utf-8 -*-
 from datetime import date
 
-###############################################################################
-#                           public helper functions                           #
-###############################################################################
-
+# public helper functions
 
 def shape(array):
     """Return dimensions (shape) of a multidimensional list"""
@@ -22,10 +20,7 @@ def shape(array):
             return shp
 
 
-###############################################################################
-#                        classes defining C constructs                        #
-###############################################################################
-
+# classes defining C constructs
 
 class EnumValue:
     """Singular value of an C-style enumeration"""
@@ -275,10 +270,7 @@ class Function:
         return call_
 
 
-###############################################################################
-#                         Main, file-generating class                         #
-###############################################################################
-
+# Main, file-generating class
 
 class CodeWriter:
     """Class to describe and generate contents of a .c/.cpp/.h/.hpp file"""
