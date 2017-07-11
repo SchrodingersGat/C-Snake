@@ -1,9 +1,7 @@
+# -*- coding: utf-8 -*-
 from datetime import date
 
-###############################################################################
-#                           public helper functions                           #
-###############################################################################
-
+# public helper functions
 
 def shape(array):
     """Return dimensions (shape) of a multidimensional list"""
@@ -11,19 +9,18 @@ def shape(array):
     if isinstance(array, str):
         return ''
     curr = array
-    shape = []
+    shp = []
     while True:
+        if isinstance(curr, dict):
+            return shp
         try:
-            shape.append(len(curr))
+            shp.append(len(curr))
             curr = curr[0]
-        except TypeError:
-            return shape
+        except (TypeError, IndexError):
+            return shp
 
 
-###############################################################################
-#                        classes defining C constructs                        #
-###############################################################################
-
+# classes defining C constructs
 
 class EnumValue:
     """Singular value of an C-style enumeration"""
@@ -46,7 +43,7 @@ class Enum:
         self.prefix = prefix
 
     def add_value(self, name, value=None, comment=None):
-        """assuees that the user adds the values in the correct order"""
+        """assures that the user adds the values in the correct order"""
 
         self.values.append(EnumValue(name, value=value, comment=comment))
 
@@ -123,6 +120,11 @@ class Variable:
                 """Helper class to identify closed braces while printing"""
                 pass
 
+            class Designator:
+                """Helper class to identify struct designators"""
+                def __init__(self, name):
+                    self.name = name
+
             depth = 0
             stack = []
             stack.append(array)
@@ -137,6 +139,13 @@ class Variable:
                     stack.extend(top[::-1])
                     stack.append(OpenBrace())
                     continue
+                if isinstance(top, dict):
+                    stack.append(ClosedBrace())
+                    dict_pairs = [[value, Designator(key)] for key, value in top.items()][::-1]
+                    flatdict = [item for sublist in dict_pairs for item in sublist]
+                    stack.extend(flatdict)
+                    stack.append(OpenBrace())
+                    continue
                 # non-comma-delimited tokens
                 if isinstance(top, ClosedBrace):
                     depth -= 1 if depth > 0 else 0
@@ -144,6 +153,8 @@ class Variable:
                     if stack:
                         if isinstance(stack[-1], ClosedBrace):
                             output += '\n' + (indent * (depth - 1))
+                        elif isinstance(stack[-1], Designator):
+                            output += ','
                         else:
                             output += ',\n' + (indent * depth)
                         leading_comma = False
@@ -157,12 +168,18 @@ class Variable:
                 if isinstance(top, OpenBrace):
                     output += '{'
                     depth += 1
-                    if isinstance(stack[-1], (OpenBrace, list, tuple)):
+                    if isinstance(stack[-1], (OpenBrace, list, tuple, dict)):
                         output += '\n' + (indent * depth)
                     leading_comma = False
                     continue
                 if isinstance(top, (int, float, str)):
                     output += generate_single_var(top, formatstring)
+                    continue
+                if isinstance(top, Designator):
+                    output += '\n' + (indent * depth)
+                    output += '.' + top.name + ' = '
+                    leading_comma = False
+                    continue
             return output
 
         # main part: generating initializer
@@ -175,7 +192,7 @@ class Variable:
 
         array = self.__array_dimensions()
 
-        if isinstance(self.value, (tuple, list)):
+        if isinstance(self.value, (tuple, list, dict)):
             assignment = '\n' if len(shape(self.value)) > 1 else ''
             assignment += generate_array(self.value, indent, self.value_opts)
         else:
@@ -253,10 +270,7 @@ class Function:
         return call_
 
 
-###############################################################################
-#                         Main, file-generating class                         #
-###############################################################################
-
+# Main, file-generating class
 
 class CodeWriter:
     """Class to describe and generate contents of a .c/.cpp/.h/.hpp file"""

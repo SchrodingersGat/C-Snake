@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 from csnake import *
 
 # generate a header file
@@ -118,10 +120,26 @@ var3 = Variable(
     comment=None,
     value=[[0 for _ in range(3)] for _ in range(3)],
     value_opts='{0:x}')
+var4 = Variable(
+    name='array_of_structs',
+    primitive='DatStructTho',
+    qualifiers='',
+    array=None,
+    comment=None,
+    value=[{
+        'a': [1, 2, 3, 4, 5],
+        'b': 13,
+        'c': 2.8
+    }, {
+        'a': [11, 23, 42, 5, 6],
+        'b': 53,
+        'c': 3.8
+    }])
 
 h.add_variable_declaration(var1, extern=True)
 h.add_variable_declaration(var2, extern=True)
 h.add_variable_declaration(var3, extern=True)
+h.add_variable_declaration(var4, extern=True)
 
 h.end_if_def()
 
@@ -135,10 +153,11 @@ c.include("main.h")
 
 c.add_line()
 
-# initialize those declared variables 
+# initialize those declared variables
 c.add_variable_initialization(var1)
 c.add_variable_initialization(var2)
 c.add_variable_initialization(var3)
+c.add_variable_initialization(var4)
 
 c.add_line()
 c.add_line(comment="Main function")
