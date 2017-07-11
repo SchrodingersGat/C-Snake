@@ -48,7 +48,7 @@ class Enum:
         self.prefix = prefix
 
     def add_value(self, name, value=None, comment=None):
-        """assuees that the user adds the values in the correct order"""
+        """assures that the user adds the values in the correct order"""
 
         self.values.append(EnumValue(name, value=value, comment=comment))
 
