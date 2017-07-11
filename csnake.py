@@ -125,6 +125,11 @@ class Variable:
                 """Helper class to identify closed braces while printing"""
                 pass
 
+            class Designator:
+                """Helper class to identify struct designators"""
+                def __init__(self, name):
+                    self.name = name
+
             depth = 0
             stack = []
             stack.append(array)
@@ -137,6 +142,13 @@ class Variable:
                 if isinstance(top, (list, tuple)):
                     stack.append(ClosedBrace())
                     stack.extend(top[::-1])
+                    stack.append(OpenBrace())
+                    continue
+                if isinstance(top, dict):
+                    stack.append(ClosedBrace())
+                    dict_pairs = [[value, Designator(key)] for key, value in top.items()][::-1]
+                    flatdict = [item for sublist in dict_pairs for item in sublist]
+                    stack.extend(flatdict)
                     stack.append(OpenBrace())
                     continue
                 # non-comma-delimited tokens
@@ -159,12 +171,18 @@ class Variable:
                 if isinstance(top, OpenBrace):
                     output += '{'
                     depth += 1
-                    if isinstance(stack[-1], (OpenBrace, list, tuple)):
+                    if isinstance(stack[-1], (OpenBrace, list, tuple, dict)):
                         output += '\n' + (indent * depth)
                     leading_comma = False
                     continue
                 if isinstance(top, (int, float, str)):
                     output += generate_single_var(top, formatstring)
+                    continue
+                if isinstance(top, Designator):
+                    output += '\n' + (indent * depth)
+                    output += '.' + top.name + ' = '
+                    leading_comma = False
+                    continue
             return output
 
         # main part: generating initializer
@@ -177,7 +195,7 @@ class Variable:
 
         array = self.__array_dimensions()
 
-        if isinstance(self.value, (tuple, list)):
+        if isinstance(self.value, (tuple, list, dict)):
             assignment = '\n' if len(shape(self.value)) > 1 else ''
             assignment += generate_array(self.value, indent, self.value_opts)
         else:
