@@ -11,13 +11,15 @@ def shape(array):
     if isinstance(array, str):
         return ''
     curr = array
-    shape = []
+    shp = []
     while True:
+        if isinstance(curr, dict):
+            return shp
         try:
-            shape.append(len(curr))
+            shp.append(len(curr))
             curr = curr[0]
-        except TypeError:
-            return shape
+        except (TypeError, IndexError):
+            return shp
 
 
 ###############################################################################
